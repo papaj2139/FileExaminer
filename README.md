@@ -18,7 +18,7 @@ FileExaminer is a command-line tool written in Python that allows you to scan a 
 1. Clone the repository to your local machine:
 
 ```
-git clone https://github.com/yourusername/FileExaminer.git
+git clone https://github.com/papaj2139/FileExaminer.git
 ```
 
 2. Navigate to the directory:
