@@ -1,15 +1,16 @@
 import os
 import time
 import argparse
+import threading
+from queue import Queue
+import psutil
 
-# Directories to exclude from the full and quick scans
 EXCLUDED_DIRS = ["C:\\Windows", "C:\\Program Files", "C:\\Program Files (x86)"]
 
 def get_size_recursive(path, max_depth=None, include_hidden=False, min_file_size=None, valid_extensions=None):
     total_size = 0
     for dirpath, dirnames, filenames in os.walk(path, topdown=True):
         if not include_hidden:
-            # Exclude hidden directories and files
             dirnames[:] = [d for d in dirnames if not d.startswith('.') and not os.path.join(dirpath, d).startswith('.')]
             filenames = [f for f in filenames if not f.startswith('.') and not os.path.join(dirpath, f).startswith('.')]
         depth = dirpath[len(path) + len(os.path.sep):].count(os.path.sep)
@@ -23,7 +24,7 @@ def get_size_recursive(path, max_depth=None, include_hidden=False, min_file_size
             if valid_extensions and not any(filename.lower().endswith(ext) for ext in valid_extensions):
                 continue
             total_size += file_size
-            print(filepath)  # Print the path of each file as it's scanned
+            print(filepath)
     return total_size
 
 def format_size(size_bytes):
@@ -33,82 +34,138 @@ def format_size(size_bytes):
         size_bytes /= 1024.0
 
 def is_important_system_file(file_path):
-    
     important_extensions = ['.sys', '.dll', '.exe']
     return any(file_path.lower().endswith(ext) for ext in important_extensions)
 
-def get_largest_files_and_folders(path, num_files=10, quick_scan=False, custom_scan=False, max_depth=None,
-                                 include_hidden=False, min_file_size=None, valid_extensions=None, output_file=None):
+def process_directory(queue, directory, max_depth, include_hidden, min_file_size, valid_extensions, resource_level):
+    total_size = 0
+    for dirpath, dirnames, filenames in os.walk(directory, topdown=True):
+        if not include_hidden:
+            dirnames[:] = [d for d in dirnames if not d.startswith('.') and not os.path.join(dirpath, d).startswith('.')]
+            filenames = [f for f in filenames if not f.startswith('.') and not os.path.join(dirpath, f).startswith('.')]
+        depth = dirpath[len(directory) + len(os.path.sep):].count(os.path.sep)
+        if max_depth is not None and depth >= max_depth:
+            continue
+        for filename in filenames:
+            filepath = os.path.join(dirpath, filename)
+            file_size = os.path.getsize(filepath)
+            if min_file_size is not None and file_size < min_file_size:
+                continue
+            if valid_extensions and not any(filename.lower().endswith(ext) for ext in valid_extensions):
+                continue
+            total_size += file_size
+            queue.put((filepath, file_size))
+        
+        # Monitor resource usage based on the resource_level option
+        if resource_level == "low":
+            time.sleep(0.1)  # Simulate low resource usage
+        elif resource_level == "medium":
+            process = psutil.Process(os.getpid())
+            process.cpu_percent(interval=0.1)
+            time.sleep(0.05)  # Simulate moderate resource usage
+        elif resource_level == "high":
+            process = psutil.Process(os.getpid())
+            process.cpu_percent(interval=0.01)
+            time.sleep(0.01)  # Simulate high resource usage
+    queue.put(None)
+
+def main_threaded(scan_type, directory_to_scan, max_depth, include_hidden, min_file_size, valid_extensions,
+                  num_files_to_display, output_file, resource_level):
     files = []
     folders = []
     num_files_scanned = 0
-    total_files = sum(len(files) for _, _, files in os.walk(path))
+    total_files = sum(len(files) for _, _, files in os.walk(directory_to_scan))
     start_time = time.time()
+    queue = Queue()
 
-    for dirpath, dirnames, filenames in os.walk(path):
-        if custom_scan and not quick_scan:
-            dirnames[:] = [d for d in dirnames if os.path.join(dirpath, d) not in EXCLUDED_DIRS]
+    scanner_thread = threading.Thread(target=process_directory, args=(queue, directory_to_scan, max_depth,
+                                                                      include_hidden, min_file_size, valid_extensions, resource_level))
+    scanner_thread.start()
+
+    while True:
+        result = queue.get()
+        if result is None:
+            break
+        filepath, file_size = result
+        if os.path.isfile(filepath):
+            is_important = is_important_system_file(filepath)
+            files.append((filepath, file_size, is_important))
         else:
-            dirnames[:] = [d for d in dirnames if os.path.join(dirpath, d) not in EXCLUDED_DIRS]
-
-        for dirname in dirnames:
-            dir_size = get_size_recursive(os.path.join(dirpath, dirname), max_depth=max_depth, include_hidden=include_hidden,
-                                          min_file_size=min_file_size, valid_extensions=valid_extensions) if not quick_scan else 0
-            folders.append((dirname, dir_size, True))  # Mark folders as important by default
-            num_files_scanned += 1
-            if quick_scan:
-                break  # Stop scanning subdirectories in quick scan mode
-
-        for filename in filenames:
-            file_path = os.path.join(dirpath, filename)
-            file_size = os.path.getsize(file_path)
-            is_important = is_important_system_file(file_path)
-            files.append((filename, file_size, is_important))
-            num_files_scanned += 1
-
+            folders.append((filepath, file_size, True))
+        num_files_scanned += 1
         elapsed_time = time.time() - start_time
         time_per_file = elapsed_time / max(1, num_files_scanned)
         estimated_remaining_time = (total_files - num_files_scanned) * time_per_file
 
+        # Print progress to console
         print(f"Progress: {num_files_scanned}/{total_files} files scanned.")
         print(f"Estimated Time Remaining: {estimated_remaining_time:.2f} seconds")
+
+        # Append progress to history.log
+        with open('history.log', 'a') as history_file:
+            history_file.write(f"Progress: {num_files_scanned}/{total_files} files scanned.\n")
+            history_file.write(f"Estimated Time Remaining: {estimated_remaining_time:.2f} seconds\n")
 
     files.sort(key=lambda x: x[1], reverse=True)
     folders.sort(key=lambda x: x[1], reverse=True)
 
     if output_file:
         with open(output_file, 'w') as f:
-            f.write(f"\nTop {num_files} Largest Files:\n")
-            for item, size, is_important in files[:num_files]:
+            f.write(f"\nTop {num_files_to_display} Largest Files:\n")
+            for item, size, is_important in files[:num_files_to_display]:
                 size_str = format_size(size)
                 item_type = "File"
                 if is_important:
                     item_type += " (Important System File)"
                 f.write(f"{item_type}: {item} - Size: {size_str}\n")
 
-            f.write(f"\nTop {num_files} Largest Folders:\n")
-            for item, size, is_important in folders[:num_files]:
+            f.write(f"\nTop {num_files_to_display} Largest Folders:\n")
+            for item, size, is_important in folders[:num_files_to_display]:
                 size_str = format_size(size)
                 item_type = "Folder"
                 if is_important:
                     item_type += " (Important System Folder)"
                 f.write(f"{item_type}: {item} - Size: {size_str}\n")
-    else:
-        print(f"\nTop {num_files} Largest Files:")
-        for item, size, is_important in files[:num_files]:
-            size_str = format_size(size)
-            item_type = "File"
-            if is_important:
-                item_type += " (Important System File)"
-            print(f"{item_type}: {item} - Size: {size_str}")
 
-        print(f"\nTop {num_files} Largest Folders:")
-        for item, size, is_important in folders[:num_files]:
-            size_str = format_size(size)
-            item_type = "Folder"
-            if is_important:
-                item_type += " (Important System Folder)"
-            print(f"{item_type}: {item} - Size: {size_str}")
+        # Append scan results to the history log
+        with open('history.log', 'a') as history_file:
+            history_file.write(f"\nScan Results - {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+            history_file.write(f"Directory: {directory_to_scan}\n")
+            history_file.write(f"Scan Type: {scan_type}\n")
+            history_file.write(f"Number of Files Displayed: {num_files_to_display}\n")
+            history_file.write(f"Output File: {output_file}\n")
+            history_file.write(f"Resource Level: {resource_level}\n\n")
+            history_file.write("Top Files:\n")
+            for item, size, is_important in files[:num_files_to_display]:
+                size_str = format_size(size)
+                item_type = "File"
+                if is_important:
+                    item_type += " (Important System File)"
+                history_file.write(f"{item_type}: {item} - Size: {size_str}\n")
+            history_file.write("\nTop Folders:\n")
+            for item, size, is_important in folders[:num_files_to_display]:
+                size_str = format_size(size)
+                item_type = "Folder"
+                if is_important:
+                    item_type += " (Important System Folder)"
+                history_file.write(f"{item_type}: {item} - Size: {size_str}\n")
+
+    # Print the largest files and folders to the console
+    print("\nTop Largest Files:")
+    for item, size, is_important in files[:num_files_to_display]:
+        size_str = format_size(size)
+        item_type = "File"
+        if is_important:
+            item_type += " (Important System File)"
+        print(f"{item_type}: {item} - Size: {size_str}")
+
+    print("\nTop Largest Folders:")
+    for item, size, is_important in folders[:num_files_to_display]:
+        size_str = format_size(size)
+        item_type = "Folder"
+        if is_important:
+            item_type += " (Important System Folder)"
+        print(f"{item_type}: {item} - Size: {size_str}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Scan and find the largest files and folders.")
@@ -120,6 +177,7 @@ if __name__ == "__main__":
     parser.add_argument("--valid-extensions", nargs="+", help="List of valid file extensions to include in the results")
     parser.add_argument("--num-files", type=int, default=10, help="Number of top files and folders to display (default is 10)")
     parser.add_argument("--output-file", help="Output file to store the results (optional)")
+    parser.add_argument("--resource-level", choices=["low", "medium", "high"], default="medium", help="Resource usage level: low, medium, high")
     args = parser.parse_args()
 
     scan_type = args.scan_type
@@ -130,12 +188,14 @@ if __name__ == "__main__":
     valid_extensions = args.valid_extensions
     num_files_to_display = args.num_files
     output_file = args.output_file
+    resource_level = args.resource_level
 
     if scan_type == "quick":
-        get_largest_files_and_folders(directory_to_scan, num_files=num_files_to_display, quick_scan=True, output_file=output_file)
+        main_threaded("quick", directory_to_scan, max_depth, include_hidden, min_file_size, valid_extensions,
+                      num_files_to_display, output_file, resource_level)
     elif scan_type == "full":
-        get_largest_files_and_folders(directory_to_scan, num_files=num_files_to_display, output_file=output_file)
+        main_threaded("full", directory_to_scan, max_depth, include_hidden, min_file_size, valid_extensions,
+                      num_files_to_display, output_file, resource_level)
     elif scan_type == "custom":
-        get_largest_files_and_folders(directory_to_scan, num_files=num_files_to_display, custom_scan=True, max_depth=max_depth,
-                                      include_hidden=include_hidden, min_file_size=min_file_size,
-                                      valid_extensions=valid_extensions, output_file=output_file)
+        main_threaded("custom", directory_to_scan, max_depth, include_hidden, min_file_size, valid_extensions,
+                      num_files_to_display, output_file, resource_level)
