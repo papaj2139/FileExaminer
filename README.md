@@ -70,7 +70,7 @@ python main.py custom C:\Users\yourusername\Downloads --max-depth 2 --include-hi
 
 - The script will display the progress and estimated time remaining during the scan.
 - If no options are specified, the script will perform a full scan by default and display the top 10 largest files and folders.
-- It uses more cpu and ram (About 500 mb of ram per 150000 files) then it uses disk, but i still recommend a SSD for this
+- It uses more cpu and ram (About 500 mb of ram per 1500000 files) then it uses disk, but i still recommend a SSD for this
 
 ## License
 
