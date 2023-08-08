@@ -1,35 +1,45 @@
 
 
-# FileExaminer - Scan and Find the Largest Files and Folders
+Certainly! Here's the modified GitHub description for the version 1.1 of your FileExaminer tool that includes the new features and updates:
 
-FileExaminer is a command-line tool written in Python that allows you to scan a directory and find the largest files and folders within it. It provides three types of scans: quick, full, and custom, allowing you to customize the scan based on your specific requirements.
+# FileExaminer 1.1 - Scan and Find the Largest Files and Folders
+
+FileExaminer is a command-line tool written in Python that enables you to scan a directory and discover the largest files and folders it contains. With three distinct scan types—quick, full, and custom—you can tailor your scans to meet specific requirements.
+
+## New in Version 1.1
+
+- **Resource Usage Control**: Choose from three resource levels—low, medium, or high—to control the speed and efficiency of your scans. Higher levels consume more resources for faster scans.
+
+- **Enhanced Progress Visualization**: Monitor progress in real-time through the console while scanning. Results are also recorded in the `history.log` file for future reference.
+
+- **Optimized Resource Management**: The tool now simulates different levels of resource usage, enhancing the balance between performance and resource consumption.
 
 ## Features
 
 - Scan a directory and its subdirectories to find the largest files and folders.
 - Three scan types: quick, full, and custom.
-- Option to specify the maximum depth for custom scans.
-- Ability to include hidden files and folders in the scan.
+- Specify maximum depth for custom scans.
+- Option to include hidden files and folders in the scan.
 - Filter files by minimum size and specific file extensions.
-- Option to output the results to a text file.
+- Output results to a text file.
 
 ## Usage
 
 1. Clone the repository to your local machine:
 
-```
+```bash
 git clone https://github.com/papaj2139/FileExaminer.git
 ```
 
 2. Navigate to the directory:
 
-```
+```bash
 cd FileExaminer
 ```
 
 3. Run the script with the following command:
 
-```
+```bash
 python main.py scan_type directory [options]
 ```
 
@@ -48,21 +58,22 @@ Replace `directory` with the path of the directory you want to scan.
 - `--valid-extensions`: List of valid file extensions to include in the results.
 - `--num-files`: Number of top files and folders to display (default is 10).
 - `--output-file`: Output file to store the results (optional).
+- `--resource-level`: Resource usage level: low, medium, high (default is medium).
 
 ### Examples
 
 1. Perform a quick scan in the "Downloads" directory:
-```
+```bash
 python main.py quick C:\Users\yourusername\Downloads
 ```
 
 2. Perform a full scan and display the top 5 largest files and folders:
-```
+```bash
 python main.py full C:\Users\yourusername\Downloads --num-files 5
 ```
 
-3. Perform a custom scan with a maximum depth of 2, including hidden files and folders, and save the results to a file:
-```
+3. Perform a custom scan with a maximum depth of 2, include hidden files and folders, and save the results to a file:
+```bash
 python main.py custom C:\Users\yourusername\Downloads --max-depth 2 --include-hidden --output-file scan_results.txt
 ```
 
@@ -70,11 +81,13 @@ python main.py custom C:\Users\yourusername\Downloads --max-depth 2 --include-hi
 
 - The script will display the progress and estimated time remaining during the scan.
 - If no options are specified, the script will perform a full scan by default and display the top 10 largest files and folders.
-- It uses more cpu and ram (About 500 mb of ram per 1500000 files) then it uses disk, but i still recommend a SSD for this
+- It uses more CPU and RAM (about 500 MB of RAM per 1,500,000 files) than it uses disk space. An SSD is recommended for optimal performance.
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+```
+
 
 
 
