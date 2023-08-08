@@ -1,6 +1,5 @@
 
 
-Certainly! Here's the modified GitHub description for the version 1.1 of your FileExaminer tool that includes the new features and updates:
 
 # FileExaminer 1.1 - Scan and Find the Largest Files and Folders
 
