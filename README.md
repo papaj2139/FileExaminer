@@ -1,7 +1,5 @@
 
-
-
-# FileExaminer 1.1 - Scan and Find the Largest Files and Folders
+# FileExaminer 1.2 - Scan and Find the Largest Files and Folders
 
 FileExaminer is a command-line tool written in Python that enables you to scan a directory and discover the largest files and folders it contains. With three distinct scan types—quick, full, and custom—you can tailor your scans to meet specific requirements.
 
@@ -13,6 +11,12 @@ FileExaminer is a command-line tool written in Python that enables you to scan a
 
 - **Optimized Resource Management**: The tool now simulates different levels of resource usage, enhancing the balance between performance and resource consumption.
 
+## New in Version 1.2
+
+- **Pause and Resume**: Pause and resume your scan process interactively, allowing you to control when the scan runs.
+
+- **Memory Usage Monitoring**: Monitor memory usage during scans to ensure efficient resource allocation.
+
 ## Features
 
 - Scan a directory and its subdirectories to find the largest files and folders.
@@ -21,6 +25,8 @@ FileExaminer is a command-line tool written in Python that enables you to scan a
 - Option to include hidden files and folders in the scan.
 - Filter files by minimum size and specific file extensions.
 - Output results to a text file.
+- Interactive pause and resume functionality.
+- Memory usage monitoring.
 
 ## Usage
 
@@ -58,6 +64,7 @@ Replace `directory` with the path of the directory you want to scan.
 - `--num-files`: Number of top files and folders to display (default is 10).
 - `--output-file`: Output file to store the results (optional).
 - `--resource-level`: Resource usage level: low, medium, high (default is medium).
+- `--no-history`: Disable history logging.
 
 ### Examples
 
@@ -81,13 +88,12 @@ python main.py custom C:\Users\yourusername\Downloads --max-depth 2 --include-hi
 - The script will display the progress and estimated time remaining during the scan.
 - If no options are specified, the script will perform a full scan by default and display the top 10 largest files and folders.
 - It uses more CPU and RAM (about 500 MB of RAM per 1,500,000 files) than it uses disk space. An SSD is recommended for optimal performance.
-- Btw the history.log files CAN GET ABSOLUTELY HUGE, i mean not that huge only 25000 times bigger then the code, i will make it optional in the next version but live with it right now.
+- The history.log files can become very large, up to 25000 times the code size. It is optional.
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+```
 
-
-
-
+This version includes the "New in Version 1.1" section as requested.
 
