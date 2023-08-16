@@ -95,5 +95,5 @@ python main.py custom C:\Users\yourusername\Downloads --max-depth 2 --include-hi
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 ```
 
-This version includes the "New in Version 1.1" section as requested.
+
 
