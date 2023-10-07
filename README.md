@@ -1,5 +1,6 @@
 
-# FileExaminer 1.2 - Scan and Find the Largest Files and Folders
+
+# FileExaminer 1.3 - Scan and Find the Largest Files and Folders
 
 FileExaminer is a command-line tool written in Python that enables you to scan a directory and discover the largest files and folders it contains. With three distinct scan types—quick, full, and custom—you can tailor your scans to meet specific requirements.
 
@@ -17,6 +18,12 @@ FileExaminer is a command-line tool written in Python that enables you to scan a
 
 - **Memory Usage Monitoring**: Monitor memory usage during scans to ensure efficient resource allocation.
 
+## New in Version 1.3
+
+- **Parallel Scanning**: Introducing parallel scanning, which allows FileExaminer to utilize multiple threads for faster scans on multi-core systems.
+
+- **Multiple Output Formats**: Choose from multiple output formats, including plain text, CSV, and JSON, to export scan results.
+
 ## Features
 
 - Scan a directory and its subdirectories to find the largest files and folders.
@@ -24,9 +31,10 @@ FileExaminer is a command-line tool written in Python that enables you to scan a
 - Specify maximum depth for custom scans.
 - Option to include hidden files and folders in the scan.
 - Filter files by minimum size and specific file extensions.
-- Output results to a text file.
+- Output results in various formats: plain text, CSV, or JSON.
 - Interactive pause and resume functionality.
-- Memory usage monitoring.
+- Monitor memory usage during scans.
+- Detailed history logging (optional).
 
 ## Usage
 
@@ -63,22 +71,23 @@ Replace `directory` with the path of the directory you want to scan.
 - `--valid-extensions`: List of valid file extensions to include in the results.
 - `--num-files`: Number of top files and folders to display (default is 10).
 - `--output-file`: Output file to store the results (optional).
+- `--output-format`: Choose the output format: `text` (default), `csv`, or `json`.
 - `--resource-level`: Resource usage level: low, medium, high (default is medium).
 - `--no-history`: Disable history logging.
 
 ### Examples
 
-1. Perform a quick scan in the "Downloads" directory:
+1. Perform a quick scan in the "Downloads" directory and export results to CSV:
 ```bash
-python main.py quick C:\Users\yourusername\Downloads
+python main.py quick C:\Users\yourusername\Downloads --output-format csv
 ```
 
-2. Perform a full scan and display the top 5 largest files and folders:
+2. Perform a full scan and display the top 5 largest files and folders in JSON format:
 ```bash
-python main.py full C:\Users\yourusername\Downloads --num-files 5
+python main.py full C:\Users\yourusername\Downloads --num-files 5 --output-format json
 ```
 
-3. Perform a custom scan with a maximum depth of 2, include hidden files and folders, and save the results to a file:
+3. Perform a custom scan with a maximum depth of 2, include hidden files and folders, and save the results to a file in plain text format:
 ```bash
 python main.py custom C:\Users\yourusername\Downloads --max-depth 2 --include-hidden --output-file scan_results.txt
 ```
@@ -93,7 +102,6 @@ python main.py custom C:\Users\yourusername\Downloads --max-depth 2 --include-hi
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 
 
 
