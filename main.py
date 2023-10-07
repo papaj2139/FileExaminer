@@ -4,6 +4,8 @@ import argparse
 import threading
 from queue import Queue
 import psutil
+import concurrent.futures
+import json
 
 EXCLUDED_DIRS = ["C:\\Windows", "C:\\Program Files", "C:\\Program Files (x86)"]
 
@@ -190,6 +192,109 @@ def main_threaded(scan_type, directory_to_scan, max_depth, include_hidden, min_f
             item_type += " (Important System Folder)"
         print(f"{item_type}: {item} - Size: {size_str}")
 
+def main_parallel(scan_type, directory_to_scan, max_depth, include_hidden, min_file_size, valid_extensions,
+                  num_files_to_display, output_file, resource_level, history_logging, pause_event):
+    files = []
+    folders = []
+    num_files_scanned = 0
+    total_files = sum(len(files) for _, _, files in os.walk(directory_to_scan))
+    start_time = time.time()
+    queue = Queue()
+
+    max_workers = 4  # Adjust the number of threads as needed
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_file = {executor.submit(process_directory, queue, directory_to_scan, max_depth,
+                                          include_hidden, min_file_size, valid_extensions, resource_level, pause_event): directory_to_scan}
+
+        while future_to_file:
+            completed_futures = concurrent.futures.as_completed(future_to_file)
+            for future in completed_futures:
+                directory = future_to_file[future]
+                del future_to_file[future]
+
+                result = future.result()
+                if result is None:
+                    continue
+
+                filepath, file_size = result
+                if os.path.isfile(filepath):
+                    is_important = is_important_system_file(filepath)
+                    files.append((filepath, file_size, is_important))
+                else:
+                    folders.append((filepath, file_size, True))
+                num_files_scanned += 1
+                elapsed_time = time.time() - start_time
+                time_per_file = elapsed_time / max(1, num_files_scanned)
+                estimated_remaining_time = (total_files - num_files_scanned) * time_per_file
+
+                print(f"Progress: {num_files_scanned}/{total_files} files scanned.")
+                print(f"Estimated Time Remaining: {estimated_remaining_time:.2f} seconds")
+
+                if history_logging:
+                    with open('history.log', 'a') as history_file:
+                        history_file.write(f"Progress: {num_files_scanned}/{total_files} files scanned.\n")
+                        history_file.write(f"Estimated Time Remaining: {estimated_remaining_time:.2f} seconds\n")
+
+    files.sort(key=lambda x: x[1], reverse=True)
+    folders.sort(key=lambda x: x[1], reverse=True)
+
+    if output_file:
+        with open(output_file, 'w') as f:
+            f.write(f"\nTop {num_files_to_display} Largest Files:\n")
+            for item, size, is_important in files[:num_files_to_display]:
+                size_str = format_size(size)
+                item_type = "File"
+                if is_important:
+                    item_type += " (Important System File)"
+                f.write(f"{item_type}: {item} - Size: {size_str}\n")
+
+            f.write(f"\nTop {num_files_to_display} Largest Folders:\n")
+            for item, size, is_important in folders[:num_files_to_display]:
+                size_str = format_size(size)
+                item_type = "Folder"
+                if is_important:
+                    item_type += " (Important System Folder)"
+                f.write(f"{item_type}: {item} - Size: {size_str}\n")
+
+        if history_logging:
+            with open('history.log', 'a') as history_file:
+                history_file.write(f"\nScan Results - {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                history_file.write(f"Directory: {directory_to_scan}\n")
+                history_file.write(f"Scan Type: {scan_type}\n")
+                history_file.write(f"Number of Files Displayed: {num_files_to_display}\n")
+                history_file.write(f"Output File: {output_file}\n")
+                history_file.write(f"Resource Level: {resource_level}\n\n")
+                history_file.write("Top Files:\n")
+                for item, size, is_important in files[:num_files_to_display]:
+                    size_str = format_size(size)
+                    item_type = "File"
+                    if is_important:
+                        item_type += " (Important System File)"
+                    history_file.write(f"{item_type}: {item} - Size: {size_str}\n")
+                history_file.write("\nTop Folders:\n")
+                for item, size, is_important in folders[:num_files_to_display]:
+                    size_str = format_size(size)
+                    item_type = "Folder"
+                    if is_important:
+                        item_type += " (Important System Folder)"
+                    history_file.write(f"{item_type}: {item} - Size: {size_str}\n")
+
+    print("\nTop Largest Files:")
+    for item, size, is_important in files[:num_files_to_display]:
+        size_str = format_size(size)
+        item_type = "File"
+        if is_important:
+            item_type += " (Important System File)"
+        print(f"{item_type}: {item} - Size: {size_str}")
+
+    print("\nTop Largest Folders:")
+    for item, size, is_important in folders[:num_files_to_display]:
+        size_str = format_size(size)
+        item_type = "Folder"
+        if is_important:
+            item_type += " (Important System Folder)"
+        print(f"{item_type}: {item} - Size: {size_str}")
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Scan and find the largest files and folders.")
     parser.add_argument("scan_type", choices=["quick", "full", "custom"], help="Type of scan: quick, full, or custom")
@@ -202,6 +307,7 @@ if __name__ == "__main__":
     parser.add_argument("--output-file", help="Output file to store the results (optional)")
     parser.add_argument("--resource-level", choices=["low", "medium", "high"], default="medium", help="Resource usage level: low, medium, high")
     parser.add_argument("--no-history", action="store_true", help="Disable history logging")
+    parser.add_argument("--parallel", action="store_true", help="Enable parallel scanning")
     args = parser.parse_args()
 
     scan_type = args.scan_type
@@ -214,15 +320,12 @@ if __name__ == "__main__":
     output_file = args.output_file
     resource_level = args.resource_level
     history_logging = not args.no_history
+    parallel_scanning = args.parallel
     pause_event = threading.Event()
 
-    if scan_type == "quick":
-        main_threaded("quick", directory_to_scan, max_depth, include_hidden, min_file_size, valid_extensions,
+    if parallel_scanning:
+        main_parallel(scan_type, directory_to_scan, max_depth, include_hidden, min_file_size, valid_extensions,
                       num_files_to_display, output_file, resource_level, history_logging, pause_event)
-    elif scan_type == "full":
-        main_threaded("full", directory_to_scan, max_depth, include_hidden, min_file_size, valid_extensions,
+    else:
+        main_threaded(scan_type, directory_to_scan, max_depth, include_hidden, min_file_size, valid_extensions,
                       num_files_to_display, output_file, resource_level, history_logging, pause_event)
-    elif scan_type == "custom":
-        main_threaded("custom", directory_to_scan, max_depth, include_hidden, min_file_size, valid_extensions,
-                      num_files_to_display, output_file, resource_level, history_logging, pause_event)
-
