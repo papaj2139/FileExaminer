@@ -96,7 +96,7 @@ python main.py custom C:\Users\yourusername\Downloads --max-depth 2 --include-hi
 
 - The script will display the progress and estimated time remaining during the scan.
 - If no options are specified, the script will perform a full scan by default and display the top 10 largest files and folders.
-- It uses more CPU and RAM (about 500 MB of RAM per 1,500,000 files) than it uses disk space. An SSD is recommended for optimal performance.
+- It uses more CPU and RAM than it uses disk. Still an SSD is recommended for optimal performance.
 - The history.log files can become very large, up to 25000 times the code size. It is optional.
 
 ## License
